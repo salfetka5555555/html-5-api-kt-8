@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Канбан-доска</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f2f2f2;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #addTaskContainer {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #taskInput {
+      width: 300px;
+      padding: 8px;
+    }
+
+    #addTaskBtn {
+      padding: 8px 12px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+
+    .board {
+      display: flex;
+      justify-content: space-around;
+      gap: 20px;
+    }
+
+    .column {
+      background: #fff;
+      padding: 10px;
+      width: 30%;
+      min-height: 300px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      transition: 0.3s;
+    }
+
+    .column.highlight {
+      background: #e0ffe0;
+      border-color: #4CAF50;
+    }
+
+    .column h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .task {
+      background: #fafafa;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 8px 0;
+      cursor: grab;
+    }
+
+    .task:active {
+      cursor: grabbing;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Канбан-доска</h1>
+
+  <div id="addTaskContainer">
+    <input type="text" id="taskInput" placeholder="Введите задачу...">
+    <button id="addTaskBtn">Добавить задачу</button>
+  </div>
+
+  <div class="board">
+    <div class="column" id="todo" ondragover="allowDrop(event)" ondrop="drop(event)">
+      <h2>To Do</h2>
+    </div>
+    <div class="column" id="inprogress" ondragover="allowDrop(event)" ondrop="drop(event)">
+      <h2>In Progress</h2>
+    </div>
+    <div class="column" id="done" ondragover="allowDrop(event)" ondrop="drop(event)">
+      <h2>Done</h2>
+    </div>
+  </div>
+
+  <script>
+    // === Основные переменные ===
+    const columns = {
+      todo: document.getElementById('todo'),
+      inprogress: document.getElementById('inprogress'),
+      done: document.getElementById('done')
+    };
+
+    // === Добавление новой задачи ===
+    document.getElementById('addTaskBtn').addEventListener('click', addTask);
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (!text) return;
+      createTask(text, 'todo');
+      input.value = '';
+      saveState();
+    }
+
+    // === Создание карточки ===
+    function createTask(text, columnId, id = Date.now()) {
+      const div = document.createElement('div');
+      div.className = 'task';
+      div.textContent = text;
+      div.draggable = true;
+      div.id = id;
+      div.addEventListener('dragstart', drag);
+      columns[columnId].appendChild(div);
+    }
+
+    // === Drag & Drop ===
+    function drag(event) {
+      event.dataTransfer.setData('text', event.target.id);
+    }
+
+    function allowDrop(event) {
+      event.preventDefault();
+      event.currentTarget.classList.add('highlight');
+    }
+
+    function drop(event) {
+      event.preventDefault();
+      const id = event.dataTransfer.getData('text');
+      const task = document.getElementById(id);
+      event.currentTarget.classList.remove('highlight');
+      event.currentTarget.appendChild(task);
+      saveState();
+    }
+
+    document.querySelectorAll('.column').forEach(col => {
+      col.addEventListener('dragleave', e => e.currentTarget.classList.remove('highlight'));
+    });
+
+    // === Сохранение и загрузка состояния ===
+    function saveState() {
+      const state = {
+        todo: Array.from(columns.todo.querySelectorAll('.task')).map(t => ({ id: t.id, text: t.textContent })),
+        inprogress: Array.from(columns.inprogress.querySelectorAll('.task')).map(t => ({ id: t.id, text: t.textContent })),
+        done: Array.from(columns.done.querySelectorAll('.task')).map(t => ({ id: t.id, text: t.textContent }))
+      };
+      localStorage.setItem('kanbanState', JSON.stringify(state));
+    }
+
+    function loadState() {
+      const saved = JSON.parse(localStorage.getItem('kanbanState') || '{}');
+      Object.keys(saved).forEach(colId => {
+        saved[colId].forEach(task => createTask(task.text, colId, task.id));
+      });
+    }
+
+    window.onload = loadState;
+  </script>
+
+</body>
+</html>
